@@ -1,4 +1,3 @@
-
 import React, { useContext } from 'react';
 import Icon from '../ui/Icon';
 import Logo from '../ui/Logo';
@@ -9,10 +8,11 @@ const Topbar: React.FC = () => {
 
   return (
     <header className="h-16 flex items-center justify-between px-4 md:px-6 bg-gray-900 border-b border-gray-800/70 shrink-0">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 md:hidden">
         <Logo className="h-8 w-8" />
         <h1 className="text-xl font-semibold text-white">Nayra: AI Editor</h1>
       </div>
+      <div className="flex-1"></div>
       <div className="flex items-center gap-3">
         {authContext?.user && (
           <>
