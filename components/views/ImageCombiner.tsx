@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import Spinner from '../ui/Spinner';
 import { HistoryContext } from '../../context/HistoryContext';
+import { GeminiContext } from '../../context/GeminiContext';
 
 interface ImageFile {
   id: string;
@@ -19,6 +20,7 @@ const ImageCombiner: React.FC = () => {
   const [combinedImage, setCombinedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const historyContext = useContext(HistoryContext);
+  const geminiContext = useContext(GeminiContext);
 
   const handleFiles = (files: FileList | null) => {
     if (files) {
@@ -63,6 +65,10 @@ const ImageCombiner: React.FC = () => {
   };
   
   const handleCombine = async () => {
+    if (!geminiContext?.ai) {
+      setError('Gemini AI client is not initialized. Please set your API key.');
+      return;
+    }
     if (images.length < 2) {
       setError('Please upload at least two images to combine.');
       return;
@@ -81,7 +87,7 @@ const ImageCombiner: React.FC = () => {
         base64Data: img.base64.split(',')[1],
         mimeType: img.file.type,
       }));
-      const imageUrl = await combineImages(prompt, imageData);
+      const imageUrl = await combineImages(geminiContext.ai, prompt, imageData);
       setCombinedImage(imageUrl);
 
       if (historyContext) {
@@ -159,7 +165,7 @@ const ImageCombiner: React.FC = () => {
           className="w-full h-24 bg-gray-800/50 border border-gray-600 rounded-lg p-4 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none transition-colors"
           rows={3}
         />
-        <Button onClick={handleCombine} isLoading={isLoading} disabled={isLoading || images.length < 2}>
+        <Button onClick={handleCombine} isLoading={isLoading} disabled={isLoading || images.length < 2 || !geminiContext?.ai}>
           <Icon name="auto_fix" />
           Combine Images
         </Button>

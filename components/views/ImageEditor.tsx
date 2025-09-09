@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import Spinner from '../ui/Spinner';
 import { HistoryContext } from '../../context/HistoryContext';
+import { GeminiContext } from '../../context/GeminiContext';
 
 interface ImageFile {
   file: File;
@@ -18,6 +19,7 @@ const ImageEditor: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const historyContext = useContext(HistoryContext);
+  const geminiContext = useContext(GeminiContext);
 
   const clearState = useCallback(() => {
     // Keep the main image, but clear other fields for a new edit
@@ -71,6 +73,10 @@ const ImageEditor: React.FC = () => {
   };
   
   const handleEdit = async () => {
+    if (!geminiContext?.ai) {
+      setError('Gemini AI client is not initialized. Please set your API key.');
+      return;
+    }
     if (!prompt.trim() || !image) {
       setError('Please upload an image and enter an editing instruction.');
       return;
@@ -90,7 +96,7 @@ const ImageEditor: React.FC = () => {
         mimeType: referenceImage.file.type
       } : undefined;
 
-      const result = await editImage(prompt, mainImagePayload, referenceImagePayload);
+      const result = await editImage(geminiContext.ai, prompt, mainImagePayload, referenceImagePayload);
 
       if (historyContext) {
         historyContext.addHistoryItem({
@@ -201,7 +207,7 @@ const ImageEditor: React.FC = () => {
           placeholder="e.g., Change the background to a sunny beach..."
           className="w-full bg-gray-800/50 border border-gray-600 rounded-xl p-4 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-colors text-base"
         />
-        <Button onClick={handleEdit} isLoading={isLoading} disabled={isLoading || !image} className="w-full py-3 text-base">
+        <Button onClick={handleEdit} isLoading={isLoading} disabled={isLoading || !image || !geminiContext?.ai} className="w-full py-3 text-base">
           <Icon name="auto_fix" />
           Apply Edit
         </Button>

@@ -1,14 +1,6 @@
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  console.error("Gemini API key not found. Please set the API_KEY environment variable.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
-
-export const generateImage = async (prompt: string): Promise<string> => {
+export const generateImage = async (ai: GoogleGenAI, prompt: string): Promise<string> => {
   try {
     const enhancedPrompt = `Create a visually stunning, highly detailed, and photorealistic image. Pay meticulous attention to every word in the user's prompt to ensure the output is accurate and of the highest quality.\n\nUser Prompt: "${prompt}"`;
 
@@ -36,6 +28,7 @@ export const generateImage = async (prompt: string): Promise<string> => {
 
 
 export const editImage = async (
+  ai: GoogleGenAI,
   prompt: string,
   mainImage: { base64Data: string; mimeType: string },
   referenceImage?: { base64Data: string; mimeType: string }
@@ -107,6 +100,7 @@ export const editImage = async (
 };
 
 export const combineImages = async (
+    ai: GoogleGenAI,
     prompt: string, 
     images: {base64Data: string, mimeType: string}[]
 ): Promise<string> => {

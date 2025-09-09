@@ -1,10 +1,10 @@
-
 import React, { useState, useContext } from 'react';
 import { generateImage } from '../../services/geminiService';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import Spinner from '../ui/Spinner';
 import { HistoryContext } from '../../context/HistoryContext';
+import { GeminiContext } from '../../context/GeminiContext';
 
 const ImageGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
@@ -12,8 +12,13 @@ const ImageGenerator: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const historyContext = useContext(HistoryContext);
+  const geminiContext = useContext(GeminiContext);
 
   const handleGenerate = async () => {
+    if (!geminiContext?.ai) {
+        setError('Gemini AI client is not initialized. Please set your API key.');
+        return;
+    }
     if (!prompt.trim()) {
       setError('Please enter a prompt.');
       return;
@@ -22,7 +27,7 @@ const ImageGenerator: React.FC = () => {
     setError(null);
     setGeneratedImage(null);
     try {
-      const imageUrl = await generateImage(prompt);
+      const imageUrl = await generateImage(geminiContext.ai, prompt);
       setGeneratedImage(imageUrl);
       
       if (historyContext) {
@@ -59,7 +64,7 @@ const ImageGenerator: React.FC = () => {
           className="w-full h-24 md:h-auto md:flex-1 bg-gray-800/50 border border-gray-600 rounded-lg p-4 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none transition-colors"
           rows={3}
         />
-        <Button onClick={handleGenerate} isLoading={isLoading} disabled={isLoading}>
+        <Button onClick={handleGenerate} isLoading={isLoading} disabled={isLoading || !geminiContext?.ai}>
           <Icon name="auto_awesome" />
           Generate
         </Button>
