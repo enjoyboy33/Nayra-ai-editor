@@ -41,6 +41,14 @@
 </head>
   <body class="bg-gray-900 text-white overflow-hidden">
     <div id="root"></div>
+    <script>
+      // This polyfill prevents a crash in browser environments where 'process.env' is not defined.
+      // The Gemini API calls will still require a proper API key setup to function,
+      // but this allows the application's UI to load.
+      if (typeof process === 'undefined') {
+        window.process = { env: { API_KEY: '' } };
+      }
+    </script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
