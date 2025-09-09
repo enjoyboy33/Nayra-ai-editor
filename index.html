@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <!-- Added Babel Standalone for in-browser transpilation of TSX/JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
       body {
         font-family: 'Poppins', sans-serif;
@@ -41,6 +43,7 @@
 </head>
   <body class="bg-gray-900 text-white overflow-hidden">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <!-- Changed script type to "text/babel" and added data-type="module" for Babel to process it -->
+    <script type="text/babel" data-type="module" src="/index.tsx"></script>
   </body>
 </html>
