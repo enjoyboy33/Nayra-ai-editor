@@ -1,0 +1,5 @@
+{
+  "name": "Nayra: AI Editor",
+  "description": "A modern, Photoshop-like AI photo editing web application powered by the Gemini API. Generate, edit, and combine images with AI assistance.",
+  "requestFramePermissions": []
+}
