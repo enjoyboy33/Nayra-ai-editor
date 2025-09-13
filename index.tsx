@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useContext, createContext, useMemo, DragEvent, ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, useContext, createContext, useMemo, DragEvent, ReactNode, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 
@@ -100,9 +100,29 @@ const editImage = async (
           mimeType: referenceImage.mimeType,
         },
       });
-      finalPrompt = `You are a professional AI photo editor. Using the two images provided, apply the following instruction to the first image. Use the second image as a style and content reference. Create a seamless, high-quality result.\n\nInstruction: "${prompt}"`;
+      finalPrompt = `You are an elite AI photo editing specialist. Your task is to meticulously edit **Image 1 (Target Image)** using **Image 2 (Reference Image)** based on the user's instruction.
+
+**Process:**
+1.  **Analyze:** Carefully examine both images.
+2.  **Understand:** Deconstruct the user's goal (e.g., style transfer, object integration).
+3.  **Execute Flawlessly:** Perform the edit, ensuring seamless integration of lighting, shadows, perspective, and color.
+
+**User's Instruction:**
+"${prompt}"
+
+**Important:** The user's instruction may be in English, Hindi, or Hinglish. Interpret it correctly. Return ONLY the final edited image.`;
     } else {
-      finalPrompt = `You are a professional AI photo editor. Apply the following instruction to the image provided. Make the edit look as natural as possible while maintaining the original image's style, lighting, and quality.\n\nInstruction: "${prompt}"`;
+      finalPrompt = `You are an expert-level AI photo editor. Your task is to perform a high-quality, seamless, and photorealistic edit on the provided image based *only* on the user's instruction.
+
+**Key requirements:**
+- **Preserve Quality:** Maintain the original image's resolution, lighting, shadows, and textures unless specified otherwise.
+- **Natural Results:** The edit must look completely natural.
+- **Strict Adherence:** Follow the user's instruction precisely.
+
+**User's Instruction:**
+"${prompt}"
+
+**Important:** The user's instruction may be in English, Hindi, or Hinglish. Interpret it correctly. Perform this edit and return only the modified image.`;
     }
     
     parts.push({ text: finalPrompt });
@@ -272,9 +292,16 @@ interface SpinnerProps {
     message?: string;
 }
 const defaultMessages = [
-    "Applying AI magic...", "Analyzing pixels...", "Consulting with digital muses...", "Painting with algorithms...",
-    "Reticulating splines...", "Unleashing creative AI...", "Crafting perfection...", "Just a moment, the AI is thinking...",
-    "Brewing some digital creativity...", "Warming up the neural networks...",
+    "Applying creative edits...",
+    "Analyzing image content...",
+    "Engaging the AI model...",
+    "Rendering your new image...",
+    "Optimizing for quality...",
+    "Finalizing the details...",
+    "Just a moment, the AI is thinking...",
+    "Processing your instructions...",
+    "Building your vision pixel by pixel...",
+    "Warming up the neural networks...",
 ];
 const Spinner: React.FC<SpinnerProps> = ({ message }) => {
     const [messages, setMessages] = useState<string[]>([]);
@@ -338,6 +365,95 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       </div>
     </div>
   );
+};
+
+// --- NEW COMPONENT: ImageViewerModal ---
+interface ImageViewerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  imageUrl: string;
+  altText?: string;
+}
+const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ isOpen, onClose, imageUrl, altText }) => {
+    const [scale, setScale] = useState(1);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+    const imageRef = useRef<HTMLImageElement>(null);
+
+    const handleZoomIn = (e: React.MouseEvent) => { e.stopPropagation(); setScale(s => Math.min(s + 0.2, 5)); };
+    const handleZoomOut = (e: React.MouseEvent) => { e.stopPropagation(); setScale(s => Math.max(s - 0.2, 0.5)); };
+    const handleReset = (e: React.MouseEvent) => { e.stopPropagation(); setScale(1); setPosition({ x: 0, y: 0 }); };
+
+    const handleWheel = (e: React.WheelEvent) => {
+        e.stopPropagation();
+        if (e.deltaY < 0) setScale(s => Math.min(s + 0.2, 5));
+        else setScale(s => Math.max(s - 0.2, 0.5));
+    };
+    
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (scale <= 1) return;
+        e.preventDefault(); e.stopPropagation();
+        setIsPanning(true);
+        setStartPan({ x: e.clientX - position.x, y: e.clientY - position.y });
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isPanning) return;
+        e.preventDefault(); e.stopPropagation();
+        setPosition({ x: e.clientX - startPan.x, y: e.clientY - startPan.y });
+    };
+    
+    const handleMouseUp = (e: React.MouseEvent) => { e.stopPropagation(); setIsPanning(false); };
+    
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        if (isOpen) {
+            document.addEventListener('keydown', handleKeyDown);
+            // Reset state on open
+            setScale(1);
+            setPosition({ x: 0, y: 0 });
+        }
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+            <div className="absolute top-4 right-4 z-[110] flex items-center gap-2">
+                <Button onClick={handleZoomIn} variant="secondary" className="!p-2.5 !w-12 !h-12" title="Zoom In"><Icon name="zoom_in" /></Button>
+                <Button onClick={handleZoomOut} variant="secondary" className="!p-2.5 !w-12 !h-12" title="Zoom Out"><Icon name="zoom_out" /></Button>
+                <Button onClick={handleReset} variant="secondary" className="!p-2.5 !w-12 !h-12" title="Reset View"><Icon name="restart_alt" /></Button>
+                <Button onClick={(e) => { e.stopPropagation(); onClose(); }} variant="secondary" className="!p-2.5 !w-12 !h-12" title="Close"><Icon name="close" /></Button>
+            </div>
+            <div 
+                className="w-full h-full flex items-center justify-center overflow-hidden" 
+                onClick={e => e.stopPropagation()}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onWheel={handleWheel}
+            >
+                <img
+                    ref={imageRef}
+                    src={imageUrl}
+                    alt={altText || 'Image preview'}
+                    className={`transition-transform duration-100 ease-out select-none ${isPanning ? 'cursor-grabbing' : (scale > 1 ? 'cursor-grab' : 'cursor-default')}`}
+                    style={{
+                        transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain'
+                    }}
+                    onMouseDown={handleMouseDown}
+                    draggable={false}
+                />
+            </div>
+        </div>
+    );
 };
 
 
@@ -457,77 +573,14 @@ const HistoryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
 // --- From context/GeminiContext.tsx ---
 interface GeminiContextType {
-  ai: GoogleGenAI | null;
-  apiKey: string | null;
-  setApiKey: (key: string) => void;
-  isKeyValid: boolean | null;
-  checkApiKey: (key: string) => Promise<boolean>;
+  ai: GoogleGenAI;
 }
 const GeminiContext = createContext<GeminiContextType | undefined>(undefined);
 const GeminiProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [apiKey, setApiKeyState] = useState<string | null>(null);
-  const [ai, setAi] = useState<GoogleGenAI | null>(null);
-  const [isKeyValid, setIsKeyValid] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Per instructions, assume process.env.API_KEY is always available.
+  const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.API_KEY! }), []);
 
-  useEffect(() => {
-    try {
-      const storedKey = localStorage.getItem('gemini-api-key');
-      if (storedKey) {
-        setApiKeyState(storedKey);
-      } else {
-        setIsKeyValid(false);
-      }
-    } catch (error) {
-        console.error("Failed to load API key from localStorage", error);
-        setIsKeyValid(false);
-    } finally {
-        setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (apiKey) {
-      const newAi = new GoogleGenAI({ apiKey });
-      setAi(newAi);
-      setIsKeyValid(true); 
-    } else {
-      setAi(null);
-      setIsKeyValid(false);
-    }
-  }, [apiKey]);
-
-  const setApiKey = (key: string) => {
-    try {
-      if (key) {
-        localStorage.setItem('gemini-api-key', key);
-        setApiKeyState(key);
-      } else {
-        localStorage.removeItem('gemini-api-key');
-        setApiKeyState(null);
-      }
-    } catch (error) {
-        console.error("Failed to save API key to localStorage", error);
-    }
-  };
-  
-  const checkApiKey = async (key: string): Promise<boolean> => {
-    if (!key) return false;
-    try {
-        const testAi = new GoogleGenAI({ apiKey: key });
-        await testAi.models.generateContent({ model: "gemini-2.5-flash", contents: 'hello' });
-        return true;
-    } catch (error) {
-        console.error("API Key validation failed:", error);
-        return false;
-    }
-  }
-
-  const value = useMemo(() => ({ ai, apiKey, setApiKey, isKeyValid, checkApiKey }), [ai, apiKey, isKeyValid]);
-
-  if (isLoading) {
-    return null;
-  }
+  const value = useMemo(() => ({ ai }), [ai]);
 
   return (
     <GeminiContext.Provider value={value}>
@@ -660,7 +713,7 @@ const Auth: React.FC = () => {
       setError('Please fill out both fields.');
       return;
     }
-    if (!/\\S+@\\S+\\.\\S+/.test(email)) {
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
       setError('Please enter a valid email address.');
       return;
     }
@@ -700,12 +753,13 @@ const ImageGenerator: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
   const historyContext = useContext(HistoryContext);
   const geminiContext = useContext(GeminiContext);
 
   const handleGenerate = async () => {
-    if (!geminiContext?.ai) {
-        setError('Gemini AI client is not initialized. Please set your API key.');
+    if (!geminiContext) {
+        setError('Gemini AI client is not available.');
         return;
     }
     if (!prompt.trim()) {
@@ -740,7 +794,7 @@ const ImageGenerator: React.FC = () => {
     <div className="h-full flex flex-col gap-8 items-center">
       <div className="w-full max-w-3xl glassmorphism p-6 rounded-2xl flex flex-col md:flex-row items-center gap-4 shadow-lg">
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., A majestic lion wearing a crown, cinematic lighting, detailed..." className="w-full h-24 md:h-auto md:flex-1 bg-gray-800/50 border border-gray-600 rounded-lg p-4 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none transition-colors" rows={3}/>
-        <Button onClick={handleGenerate} isLoading={isLoading} disabled={isLoading || !geminiContext?.ai}><Icon name="auto_awesome" />Generate</Button>
+        <Button onClick={handleGenerate} isLoading={isLoading} disabled={isLoading}><Icon name="auto_awesome" />Generate</Button>
       </div>
       {error && <p className="text-red-400 bg-red-900/50 px-4 py-2 rounded-md">{error}</p>}
       <div className="flex-1 w-full flex items-center justify-center">
@@ -748,7 +802,10 @@ const ImageGenerator: React.FC = () => {
         {!isLoading && generatedImage && (
           <div className="flex flex-col items-center gap-6 animate-fade-in">
              <img src={generatedImage} alt={prompt} className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-2xl shadow-black/50" />
-             <Button onClick={handleDownload} variant="secondary"><Icon name="download"/>Download Image</Button>
+             <div className="flex items-center gap-4">
+                <Button onClick={() => setIsViewerOpen(true)} variant="secondary"><Icon name="zoom_in"/>Preview</Button>
+                <Button onClick={handleDownload} variant="secondary"><Icon name="download"/>Download Image</Button>
+             </div>
           </div>
         )}
         {!isLoading && !generatedImage && (
@@ -759,6 +816,14 @@ const ImageGenerator: React.FC = () => {
             </div>
         )}
       </div>
+      {isViewerOpen && generatedImage && (
+        <ImageViewerModal 
+            isOpen={isViewerOpen}
+            onClose={() => setIsViewerOpen(false)}
+            imageUrl={generatedImage}
+            altText={prompt}
+        />
+      )}
     </div>
   );
 };
@@ -772,6 +837,7 @@ const ImageEditor: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
   const historyContext = useContext(HistoryContext);
   const geminiContext = useContext(GeminiContext);
 
@@ -808,8 +874,12 @@ const ImageEditor: React.FC = () => {
   };
   
   const handleEdit = async () => {
-    if (!geminiContext?.ai || !prompt.trim() || !image) {
-      setError('Please upload an image, enter an instruction, and ensure your API key is set.');
+    if (!geminiContext) {
+      setError('Gemini AI client is not available.');
+      return;
+    }
+    if (!prompt.trim() || !image) {
+      setError('Please upload an image and enter an editing instruction.');
       return;
     }
     setIsLoading(true);
@@ -870,6 +940,14 @@ const ImageEditor: React.FC = () => {
       <div className="flex-1 flex items-center justify-center glassmorphism rounded-2xl p-4 relative min-h-0">
         {isLoading && <div className="absolute inset-0 bg-gray-900/80 z-20 flex items-center justify-center rounded-2xl"><Spinner message="Applying AI magic..." /></div>}
         <img src={image.base64} alt="User upload" className="max-w-full max-h-full object-contain rounded-lg" />
+        {!isLoading && image && (
+            <button 
+                onClick={() => setIsViewerOpen(true)}
+                className="absolute top-3 right-3 w-10 h-10 bg-gray-900/50 rounded-full flex items-center justify-center hover:bg-gray-900/80 transition-colors z-10"
+                title="Zoom in">
+                <Icon name="zoom_in" />
+            </button>
+        )}
       </div>
       <div className="shrink-0 glassmorphism p-4 rounded-2xl flex flex-col items-center gap-3 shadow-lg animate-fade-in">
         <div className="w-full">
@@ -883,9 +961,17 @@ const ImageEditor: React.FC = () => {
             )}
         </div>
         <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., Change the background to a sunny beach..." className="w-full bg-gray-800/50 border border-gray-600 rounded-xl p-4 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-colors text-base"/>
-        <Button onClick={handleEdit} isLoading={isLoading} disabled={isLoading || !image || !geminiContext?.ai} className="w-full py-3 text-base"><Icon name="auto_fix" />Apply Edit</Button>
+        <Button onClick={handleEdit} isLoading={isLoading} disabled={isLoading || !image} className="w-full py-3 text-base"><Icon name="auto_fix" />Apply Edit</Button>
       </div>
       {error && <p className="text-center text-red-400 bg-red-900/50 px-4 py-2 rounded-md">{error}</p>}
+      {isViewerOpen && image && (
+        <ImageViewerModal
+            isOpen={isViewerOpen}
+            onClose={() => setIsViewerOpen(false)}
+            imageUrl={image.base64}
+            altText="Edited image"
+        />
+      )}
     </div>
   );
 };
@@ -899,6 +985,7 @@ const ImageCombiner: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [combinedImage, setCombinedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
   const historyContext = useContext(HistoryContext);
   const geminiContext = useContext(GeminiContext);
 
@@ -929,8 +1016,12 @@ const ImageCombiner: React.FC = () => {
   const removeImage = (id: string) => { setImages(images.filter(img => img.id !== id)); };
   
   const handleCombine = async () => {
-    if (!geminiContext?.ai || images.length < 2 || !prompt.trim()) {
-      setError('Please upload at least two images, provide a prompt, and set your API key.');
+    if (!geminiContext) {
+      setError('Gemini AI client is not available.');
+      return;
+    }
+    if (images.length < 2 || !prompt.trim()) {
+      setError('Please upload at least two images and provide a prompt.');
       return;
     }
     setIsLoading(true);
@@ -991,7 +1082,7 @@ const ImageCombiner: React.FC = () => {
           </div>
         </div>
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., Place the cat onto the sofa in the second image." className="w-full h-24 bg-gray-800/50 border border-gray-600 rounded-lg p-4 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none transition-colors" rows={3}/>
-        <Button onClick={handleCombine} isLoading={isLoading} disabled={isLoading || images.length < 2 || !geminiContext?.ai}><Icon name="auto_fix" />Combine Images</Button>
+        <Button onClick={handleCombine} isLoading={isLoading} disabled={isLoading || images.length < 2}><Icon name="auto_fix" />Combine Images</Button>
       </div>
       {error && <p className="text-red-400 bg-red-900/50 px-4 py-2 rounded-md">{error}</p>}
       <div className="flex-1 w-full flex items-center justify-center">
@@ -999,7 +1090,10 @@ const ImageCombiner: React.FC = () => {
         {!isLoading && combinedImage && (
           <div className="flex flex-col items-center gap-6 animate-fade-in">
               <img src={combinedImage} alt="Combined result" className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-2xl shadow-black/50" />
-              <Button onClick={handleDownload} variant="secondary"><Icon name="download"/>Download Image</Button>
+              <div className="flex items-center gap-4">
+                <Button onClick={() => setIsViewerOpen(true)} variant="secondary"><Icon name="zoom_in"/>Preview</Button>
+                <Button onClick={handleDownload} variant="secondary"><Icon name="download"/>Download Image</Button>
+              </div>
           </div>
         )}
         {!isLoading && !combinedImage && (
@@ -1008,13 +1102,21 @@ const ImageCombiner: React.FC = () => {
             </div>
         )}
       </div>
+      {isViewerOpen && combinedImage && (
+        <ImageViewerModal
+            isOpen={isViewerOpen}
+            onClose={() => setIsViewerOpen(false)}
+            imageUrl={combinedImage}
+            altText="Combined result"
+        />
+      )}
     </div>
   );
 };
 
 
 // --- From components/views/History.tsx ---
-const HistoryModal: React.FC<{ item: HistoryItem, onClose: () => void, onDelete: (id: string) => void }> = ({ item, onClose, onDelete }) => {
+const HistoryModal: React.FC<{ item: HistoryItem, onClose: () => void, onDelete: (id: string) => void, onZoom: () => void }> = ({ item, onClose, onDelete, onZoom }) => {
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = item.image;
@@ -1038,6 +1140,7 @@ const HistoryModal: React.FC<{ item: HistoryItem, onClose: () => void, onDelete:
           <p className="text-gray-400 text-sm mt-1"><strong>Date:</strong> {new Date(item.timestamp).toLocaleString()}</p>
           <p className="text-white mt-3 bg-gray-700/50 p-3 rounded-lg">{item.prompt}</p>
           <div className="flex items-center justify-end gap-4 mt-6">
+            <Button onClick={(e) => { e.stopPropagation(); onZoom(); }} variant="secondary"><Icon name="zoom_in" /> Preview</Button>
             <Button onClick={handleDownload} variant="secondary"><Icon name="download" /> Download</Button>
             <Button onClick={handleDelete} className="bg-red-600/90 hover:bg-red-700/90 focus:ring-red-500 border border-red-500 text-white"><Icon name="delete" /> Delete</Button>
             <Button onClick={onClose}>Close</Button>
@@ -1050,11 +1153,18 @@ const HistoryModal: React.FC<{ item: HistoryItem, onClose: () => void, onDelete:
 const History: React.FC = () => {
   const historyContext = useContext(HistoryContext);
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   if (!historyContext) return <div className="text-center text-red-500">Error: History context not found.</div>;
   const { history, clearHistory, deleteHistoryItem } = historyContext;
   
   const handleClearHistory = () => { if (window.confirm('Are you sure you want to clear your entire history? This action cannot be undone.')) { clearHistory(); } };
+  
+  const handleZoomRequest = () => {
+    if (selectedItem) {
+        setIsViewerOpen(true);
+    }
+  };
 
   if (history.length === 0) {
     return (
@@ -1095,7 +1205,15 @@ const History: React.FC = () => {
           ))}
         </div>
       </div>
-      {selectedItem && <HistoryModal item={selectedItem} onClose={() => setSelectedItem(null)} onDelete={deleteHistoryItem} />}
+      {selectedItem && <HistoryModal item={selectedItem} onClose={() => setSelectedItem(null)} onDelete={deleteHistoryItem} onZoom={handleZoomRequest} />}
+      {isViewerOpen && selectedItem && (
+        <ImageViewerModal
+            isOpen={isViewerOpen}
+            onClose={() => setIsViewerOpen(false)}
+            imageUrl={selectedItem.image}
+            altText={selectedItem.prompt}
+        />
+      )}
     </div>
   );
 };
@@ -1127,10 +1245,6 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.SPLASH);
   const [isAppReady, setIsAppReady] = useState<boolean>(false);
   const authContext = useContext(AuthContext);
-  const geminiContext = useContext(GeminiContext);
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [keyError, setKeyError] = useState('');
 
   useEffect(() => {
     if (!authContext?.user) {
@@ -1144,38 +1258,6 @@ const AppContent: React.FC = () => {
   }, [currentView, authContext?.user]);
   
   const handleEnterApp = useCallback(() => { setCurrentView(View.EDITOR); }, []);
-  
-  const handleSaveApiKey = async () => {
-    if (!geminiContext) return;
-    setIsVerifying(true);
-    setKeyError('');
-    const isValid = await geminiContext.checkApiKey(apiKeyInput);
-    if (isValid) {
-        geminiContext.setApiKey(apiKeyInput);
-    } else {
-        setKeyError('Invalid API Key. Please obtain a valid key from Google AI Studio.');
-    }
-    setIsVerifying(false);
-  };
-  
-  if (geminiContext?.isKeyValid === false) {
-      return (
-          <div className="h-screen w-screen bg-gray-900">
-              <Modal isOpen={true} title="Set Up Gemini API Key">
-                  <div className="flex flex-col gap-4">
-                      <p className="text-gray-400">To use Nayra AI Editor, please provide your Google Gemini API key. Your key is stored securely in your browser and is never shared.</p>
-                      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline flex items-center gap-2">Get your API key from Google AI Studio <Icon name="open_in_new" className="text-sm" /></a>
-                      <div className="relative">
-                           <Icon name="key" className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <input type="password" placeholder="Enter your API Key" value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} className="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-3 pl-12 pr-4 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-colors" aria-label="Gemini API Key"/>
-                      </div>
-                      {keyError && <p className="text-red-400 text-sm">{keyError}</p>}
-                       <Button onClick={handleSaveApiKey} isLoading={isVerifying} disabled={isVerifying || !apiKeyInput}>Save and Continue</Button>
-                  </div>
-              </Modal>
-          </div>
-      );
-  }
 
   if (!authContext?.user) { return <Auth />; }
   if (currentView === View.SPLASH || currentView === View.AUTH) { return <SplashScreen isReady={isAppReady} onEnter={handleEnterApp} />; }
