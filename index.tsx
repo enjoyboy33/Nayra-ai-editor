@@ -577,10 +577,56 @@ interface GeminiContextType {
 }
 const GeminiContext = createContext<GeminiContextType | undefined>(undefined);
 const GeminiProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Per instructions, assume process.env.API_KEY is always available.
-  const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.API_KEY! }), []);
+  const [geminiState, setGeminiState] = useState<{ai: GoogleGenAI | null; error: string | null; isInitializing: boolean}>({
+    ai: null,
+    error: null,
+    isInitializing: true,
+  });
 
-  const value = useMemo(() => ({ ai }), [ai]);
+  useEffect(() => {
+    // This effect runs once on mount to initialize the AI client.
+    try {
+      // Per instructions, we assume process.env.API_KEY is available.
+      // If it's not, for any reason (e.g., build misconfiguration), this will throw.
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+          throw new Error("API key is not configured in the deployment environment.");
+      }
+      const aiInstance = new GoogleGenAI({ apiKey });
+      setGeminiState({ ai: aiInstance, error: null, isInitializing: false });
+    } catch (e: any) {
+      console.error("Gemini AI Initialization Error:", e);
+      setGeminiState({ ai: null, error: `Failed to initialize the AI service. Please ensure the API_KEY is set correctly.`, isInitializing: false });
+    }
+  }, []);
+
+  if (geminiState.isInitializing) {
+    return (
+        <div className="h-screen w-screen flex items-center justify-center bg-gray-900">
+            <Spinner message="Initializing AI service..." />
+        </div>
+    );
+  }
+
+  if (geminiState.error) {
+    return (
+        <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-900 p-4 text-center">
+            <div className="glassmorphism p-12 rounded-3xl flex flex-col items-center">
+                <Icon name="error" className="text-7xl text-red-500" />
+                <h1 className="text-3xl font-bold text-white mt-4">Application Error</h1>
+                <p className="text-gray-400 mt-2 max-w-md">{geminiState.error}</p>
+                <p className="text-gray-500 text-sm mt-4">This is likely a configuration issue with the deployment settings.</p>
+            </div>
+        </div>
+    );
+  }
+  
+  if (!geminiState.ai) {
+      // This is a fallback, should be covered by the error state.
+      return <div className="h-screen w-screen flex items-center justify-center bg-gray-900"><p>An unknown error occurred during initialization.</p></div>
+  }
+
+  const value = useMemo(() => ({ ai: geminiState.ai as GoogleGenAI }), [geminiState.ai]);
 
   return (
     <GeminiContext.Provider value={value}>
